@@ -23,12 +23,18 @@ class Task(object):
         self.f = f
         self.distance = self.distance()
         self.latest_s = self.latest_s()
+        self.done = False
 
     def distance(self):
-        return abs(self.x - self.s) + abs(self.y - self.b)
+        return abs(self.x - self.a) + abs(self.y - self.b)
 
     def latest_s(self):
         return self.f - self.distance
+
+    def taken(self):
+        self.done = True
+
+
 
 
 class Car(object):
@@ -41,9 +47,9 @@ class Car(object):
         self.D = 0      # distance to current task being considered
 
     def take_task(self, task, time):
-        self.lazy = True
-        self.position = task.start
-        position_to_task = abs(task.start(0)-self.position(0)) + abs(task.start(1) - self.position(1))
+        self.lazy = False
+        position_to_task = abs(task.start[0]-self.position[0]) + abs(task.start[1] - self.position[1])
+        self.position = task.end
         self.avai_in = max(position_to_task, task.s - time) + task.distance
         self.task_history.append(task.no)
 
@@ -75,12 +81,12 @@ def get_ls(ob):
     return ob.latest_s
 
 # initialisation
-path = r'b_should_be_easy.in'  #change accodingly to read different files.
+file_name = 'b_should_be_easy'
+path = file_name + '.in'  #change accodingly to read different files.
 spec, l_task = read_input(path)
 t = 0
 T = spec[5]
 N_lazy = spec[2]
-N_remain = spec[3]
 N_taskdone = 0
 # Build list of objects Car.
 l_car = []
@@ -88,48 +94,45 @@ for car in range(0, N_lazy):
     l_car.append(Car(car))
 
 
-def assign(l_task, l_car, N_taskdone):
-    ls = l_task[N_taskdone].latest_s
-    ok_car = []
-    for car in l_car:
-        if car.lazy:
-            car.D = sum(abs(l_task[N_taskdone].start - car.position))
-            if car.D < ls - t:
-                ok_car.append(car)
-    if not ok_car:
-        N_taskdone += 1
-        return "no", (None, None)
+def assign(l_task, l_car, i):
+    if l_task[i].done:
+        return None, None
     else:
-        def newD(obj):
-            return abs(obj.D + t - l_task[N_taskdone].s)
-        for car in ok_car:
+        ls = l_task[i].latest_s
+        ok_car = []
+        for car in l_car:
+            if car.lazy:
+                car.D = abs(l_task[i].a - car.position[0]) + abs(l_task[i].b - car.position[1])
+                if car.D < ls - t:
+                    ok_car.append(car)
+        if not ok_car:
+            return None, None
+        else:
+            def newD(obj):
+                return abs(obj.D + t - l_task[i].s)
             sortedCar = sorted(ok_car, key=newD)
-        return "yes", (l_task(N_taskdone), sortedCar[0])
+            return l_task[i], sortedCar[0]
 
 # main function, Qinglin refuse to put it into a run() method of a class
 while t < T:
-    flag = "no"
-    while flag == "no":
-        flag, (which_task, which_car) = assign(l_task, l_car, N_taskdone)
-        N_taskdone += 1
-    # update which_car
-    which_car.take_task(which_task, t)
-    which_car.move()
-
-    N_remain -= 1
+    for car in l_car:
+        car.move()
+    for i in range(0, len(l_task)):
+        which_task, which_car = assign(l_task, l_car, i)
+        if which_car:
+            which_car.take_task(which_task, t)
+            which_task.taken()
     t += 1
-
-    if N_remain == 0:
-        break
+    print(t)
 
 
 
 def output(path):
     with open(path, 'w') as f:
-        for i in l_car:
-            row = ''.join(str(i.task_history))
-        f.write(row + '\n')
+        for car in l_car:
+            row = str(len(car.task_history)) + ' ' + ' '.join(map(str, car.task_history))
+            f.write(row + '\n')
 
-output('output.txt')
+output(file_name+'.out')
 
 
